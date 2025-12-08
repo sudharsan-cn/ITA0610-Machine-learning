@@ -1,0 +1,22 @@
+
+def find_s(training_data):
+    hypothesis = training_data[0][0].copy()
+    for attributes, label in training_data:
+        if label == "yes":
+            for i in range(len(hypothesis)):
+                if hypothesis[i] == "0":
+                    hypothesis[i] = attributes[i]
+                elif hypothesis[i] != attributes[i]:
+                    hypothesis[i] = "?"
+    return hypothesis
+
+
+# Demo dataset
+training_data = [
+    (["sunny", "warm", "normal", "strong", "warm", "same"], "yes"),
+    (["sunny", "warm", "high", "strong", "warm", "same"], "yes"),
+    (["rainy", "cold", "high", "strong", "warm", "change"], "no"),
+    (["sunny", "warm", "high", "strong", "cool", "change"], "yes"),
+]
+
+print("Final Hypothesis:", find_s(training_data))

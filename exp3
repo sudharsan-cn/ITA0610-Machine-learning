@@ -1,0 +1,59 @@
+import pandas as pd
+import numpy as np
+from math import log2
+
+def entropy(col):
+    vals, counts = np.unique(col, return_counts=True)
+    return sum([-(counts[i]/sum(counts)) * log2(counts[i]/sum(counts)) for i in range(len(vals))])
+
+def info_gain(df, attr, target):
+    total = entropy(df[target])
+    vals, counts = np.unique(df[attr], return_counts=True)
+    w_entropy = sum([(counts[i]/sum(counts)) * entropy(df[df[attr]==vals[i]][target])
+                     for i in range(len(vals))])
+    return total - w_entropy
+
+def id3(df, features, target):
+    if len(np.unique(df[target])) == 1:
+        return df[target].iloc[0]
+    if not features:
+        return df[target].mode()[0]
+
+    gains = [info_gain(df, f, target) for f in features]
+    best = features[np.argmax(gains)]
+    tree = {best: {}}
+
+    for v in np.unique(df[best]):
+        sub = df[df[best] == v]
+        if sub.empty:
+            tree[best][v] = df[target].mode()[0]
+        else:
+            tree[best][v] = id3(sub, [f for f in features if f != best], target)
+
+    return tree
+
+def classify(sample, tree):
+    for node in tree:
+        value = sample[node]
+        subtree = tree[node][value]
+        if isinstance(subtree, dict):
+            return classify(sample, subtree)
+        else:
+            return subtree
+
+data = {
+    'Outlook':['Sunny','Sunny','Overcast','Rain','Rain'],
+    'Temp':['Hot','Hot','Hot','Mild','Cool'],
+    'Humidity':['High','High','High','High','Normal'],
+    'Wind':['Weak','Strong','Weak','Weak','Weak'],
+    'Play':['No','No','Yes','Yes','Yes']
+}
+
+df = pd.DataFrame(data)
+features = list(df.columns[:-1])
+
+tree = id3(df, features, 'Play')
+print(tree)
+
+sample = {'Outlook':'Sunny','Temp':'Cool','Humidity':'High','Wind':'Weak'}
+print(classify(sample, tree))

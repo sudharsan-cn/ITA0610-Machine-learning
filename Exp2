@@ -1,0 +1,89 @@
+import csv
+
+def more_general(h1, h2):
+    return all(x == "?" or (x != "Ø" and x == y) for x, y in zip(h1, h2))
+
+def is_consistent(h, x, positive=True):
+    for hv, xv in zip(h, x):
+        if hv != "?" and hv != xv and hv != "Ø":
+            return False if positive else True
+    return True if positive else False
+
+def minimal_generalizations(h, x):
+    new_h = h.copy()
+    for i in range(len(h)):
+        if h[i] == "Ø":
+            new_h[i] = x[i]
+        elif h[i] != x[i]:
+            new_h[i] = "?"
+    return [new_h]
+
+def minimal_specializations(h, x, domain):
+    results = []
+    for i in range(len(h)):
+        if h[i] == "?":
+            for val in domain[i]:
+                if val != x[i]:
+                    h_new = h.copy()
+                    h_new[i] = val
+                    results.append(h_new)
+    return results
+
+def remove_more_general(hypotheses):
+    return [h for h in hypotheses if not any(more_general(h2, h) for h2 in hypotheses if h2 != h)]
+
+def remove_more_specific(hypotheses):
+    return [h for h in hypotheses if not any(more_general(h, h2) for h2 in hypotheses if h2 != h)]
+
+def candidate_elimination(examples, domain):
+    attrs = len(examples[0][0])
+    S = [["Ø"] * attrs]
+    G = [["?"] * attrs]
+
+    for x, label in examples:
+        if label == "yes":
+            G = [g for g in G if is_consistent(g, x)]
+            new_S = []
+            for s in S:
+                if is_consistent(s, x):
+                    new_S.append(s)
+                else:
+                    gens = minimal_generalizations(s, x)
+                    new_S.extend([h for h in gens if any(more_general(g, h) for g in G)])
+            S = remove_more_general(new_S)
+
+        else:
+            S = [s for s in S if not is_consistent(s, x)]
+            new_G = []
+            for g in G:
+                if not is_consistent(g, x):
+                    new_G.append(g)
+                else:
+                    specs = minimal_specializations(g, x, domain)
+                    for h in specs:
+                        if any(more_general(h, s) for s in S):
+                            new_G.append(h)
+            G = remove_more_specific(new_G)
+
+    return S, G
+
+file_path = "training_data.csv"
+examples = []
+domain = []
+
+with open(file_path, "r") as file:
+    reader = csv.reader(file)
+    for row in reader:
+        attributes, label = row[:-1], row[-1]
+        examples.append((attributes, label))
+        for i, val in enumerate(attributes):
+            if len(domain) < len(attributes):
+                domain.append(set())
+            domain[i].add(val)
+
+domain = [list(d) for d in domain]
+
+S, G = candidate_elimination(examples, domain)
+
+print("Specific Boundary (S):", S)
+print("General Boundary (G):", G)
